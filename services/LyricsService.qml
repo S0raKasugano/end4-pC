@@ -16,7 +16,9 @@ Singleton {
     property var lyricsLines: []
     property int activeIndex: -1
     property string status: "loading"
+    property string jsonBuffer: ""
     property var slots: ["", "", "", "", "", "", ""]
+    property int activeLineDuration: 3000
 
     readonly property int before: 3
     readonly property int after:  3
@@ -49,6 +51,12 @@ Singleton {
             if (idx !== root.activeIndex) {
                 root.activeIndex = idx
                 root.slots = root.buildSlots(idx)
+                
+                if (idx >= 0 && idx < root.lyricsLines.length) {
+                    root.activeLineDuration = root.lyricsLines[idx].duration || 3000
+                } else {
+                    root.activeLineDuration = 3000
+                }
             }
         }
     }
@@ -62,23 +70,19 @@ Singleton {
                 if (trimmed === "not_found") { root.status = "not_found"; return }
                 if (trimmed === "no_info")   { root.status = "no_info";   return }
 
-                const parts = trimmed.split("§")
-                if (parts.length < 3) return
-                if (parts[parts.length - 1].trim() !== "ok") return
-
-                let lines = []
-                for (let i = 0; i < parts.length - 1; i += 2) {
-                    const t = parseFloat(parts[i])
-                    const txt = parts[i + 1] || ""
-                    if (!isNaN(t)) lines.push({ time: t, text: txt })
+                root.jsonBuffer += data
+                
+                try {
+                    const lines = JSON.parse(root.jsonBuffer.trim())
+                    root.jsonBuffer = "" // reset buffer on success
+                    if (!lines || lines.length === 0) { root.status = "not_found"; return }
+                    root.lyricsLines = lines
+                    root.activeIndex = -1
+                    root.slots = root.buildSlots(-1)
+                    root.status = "ok"
+                } catch (e) {
+                    // still chunking, do not change status
                 }
-
-                if (lines.length === 0) { root.status = "not_found"; return }
-
-                root.lyricsLines = lines
-                root.activeIndex = -1
-                root.slots = root.buildSlots(-1)
-                root.status = "ok"
             }
         }
     }
@@ -88,6 +92,7 @@ Singleton {
         root.lyricsLines = []
         root.activeIndex = -1
         root.slots = ["", "", "", "", "", "", ""]
+        root.jsonBuffer = ""
         root.status = "loading"
 
         const title    = root.activePlayer?.trackTitle  ?? ""
@@ -99,7 +104,8 @@ Singleton {
         lyricsProc.command = [
             "python3",
             `${Directories.scriptPath}/lyrics/lyrics.py`,
-            title, artist, String(Math.floor(duration))
+            title, artist, String(Math.floor(duration)),
+            Config.options.bar.media.lyricsProviders || "lrclib, lyricsplus, unison"
         ]
         lyricsProc.running = true
     }

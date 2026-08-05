@@ -592,6 +592,26 @@ ContentPage {
                         }
                     }
                 }
+                ConfigTextArea {
+                    id: lyricsProvidersField
+                    Layout.fillWidth: true
+                    buttonIcon: "list"
+                    text: Translation.tr("Lyrics Providers (Priority Order)")
+                    placeholderText: Translation.tr("e.g. lrclib, lyricsplus")
+                    value: Config.options.bar.media.lyricsProviders
+                    onValueChanged: {
+                        providersDebounceTimer.restart();
+                    }
+
+                    Timer {
+                        id: providersDebounceTimer
+                        interval: 600
+                        repeat: false
+                        onTriggered: {
+                            Config.options.bar.media.lyricsProviders = lyricsProvidersField.value;
+                        }
+                    }
+                }
                 ConfigSwitch {
                     buttonIcon: "keep"; text: Translation.tr("Pin media controls")
                     checked: Config.options.bar.media.alwaysVisible

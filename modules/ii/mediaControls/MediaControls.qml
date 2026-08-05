@@ -84,6 +84,9 @@ Scope {
             Config.options.bar.layouts.leftLayout.includes("visualizer") ||
             Config.options.bar.layouts.middleLayout.includes("visualizer") ||
             Config.options.bar.layouts.rightLayout.includes("visualizer") ||
+            Config.options.bar.layouts.leftLayout.includes("media") ||
+            Config.options.bar.layouts.middleLayout.includes("media") ||
+            Config.options.bar.layouts.rightLayout.includes("media") ||
             Config.options.background.widgets.visualizer.enable)
             && MprisController.activePlayer !== null
         onRunningChanged: {

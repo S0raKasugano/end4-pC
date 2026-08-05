@@ -174,6 +174,7 @@ Item {
                         Layout.fillHeight: true
                         currentIndex: index
                         totalCount: root.effectiveLeftLayout.length
+                        widgetName: modelData
                         Loader {
                             Layout.fillHeight: true
                             source: root.getWidgetUrl(modelData)
@@ -234,6 +235,7 @@ Item {
                             Layout.fillHeight: true
                             currentIndex: index
                             totalCount: root.effectiveMiddleLayout.length
+                            widgetName: modelData
                             paintMaterialPill: root.shouldPaintMaterialPill(modelData)
                             bgColor: root.getMaterialPillColor(modelData)
                             Loader {
@@ -267,6 +269,7 @@ Item {
                         Layout.fillHeight: true
                         currentIndex: index
                         totalCount: root.effectiveMiddleLayout.length
+                        widgetName: modelData
                         Loader {
                             Layout.fillHeight: true
                             source: root.getWidgetUrl(modelData)
@@ -327,6 +330,7 @@ Item {
                             Layout.fillHeight: true
                             currentIndex: index
                             totalCount: root.effectiveRightLayout.length
+                            widgetName: modelData
                             paintMaterialPill: root.shouldPaintMaterialPill(modelData)
                             bgColor: root.getMaterialPillColor(modelData)
                             Loader {
@@ -360,6 +364,7 @@ Item {
                         Layout.fillHeight: true
                         currentIndex: index
                         totalCount: root.effectiveRightLayout.length
+                        widgetName: modelData
                         Loader {
                             Layout.fillHeight: true
                             source: root.getWidgetUrl(modelData)

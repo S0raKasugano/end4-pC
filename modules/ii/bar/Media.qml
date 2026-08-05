@@ -178,15 +178,120 @@ Item {
                     }
                 }
             }
-            StyledText {
-                visible: Config.options.bar.verbose
+            Item {
                 Layout.alignment: Qt.AlignVCenter
-                Layout.fillWidth: true
-                Layout.rightMargin: 0
-                horizontalAlignment: Text.AlignHCenter
-                elide: Text.ElideRight
-                color: Appearance.colors.colOnLayer1
-                text: Config.options.bar.media.onlyTitle ? root.cleanedTitle : `${root.cleanedTitle}${root.activePlayer?.trackArtist ? ' • ' + root.activePlayer.trackArtist : ''}`
+                implicitWidth: LyricsService.status === "ok" ? defaultActiveLyricRow.implicitWidth + 16 : 250
+                Layout.fillHeight: true
+                clip: true
+
+                StyledText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.leftMargin: 8
+                    visible: Config.options.bar.verbose && LyricsService.status !== "ok"
+                    horizontalAlignment: Text.AlignLeft
+                    elide: Text.ElideRight
+                    color: Appearance.colors.colOnLayer1
+                    text: Config.options.bar.media.onlyTitle ? root.cleanedTitle : `${root.cleanedTitle}${root.activePlayer?.trackArtist ? ' • ' + root.activePlayer.trackArtist : ''}`
+                }
+
+                Item {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.leftMargin: 8
+                    visible: Config.options.bar.verbose && LyricsService.status === "ok"
+                    height: defaultLyricHeightRef.implicitHeight
+                    
+                    StyledText {
+                        id: defaultLyricHeightRef
+                        text: "T"
+                        opacity: 0
+                    }
+                    
+                    Item {
+                        id: defaultLyricContainer
+                        anchors.fill: parent
+                        
+                        property string text: LyricsService.slots[3] || "♪"
+                        property var currentWords: LyricsService.activeIndex >= 0 && LyricsService.lyricsLines[LyricsService.activeIndex]?.words?.length > 0 ? LyricsService.lyricsLines[LyricsService.activeIndex].words : [{text: defaultLyricContainer.text, startTime: 0, duration: 0}]
+                        property real elapsedTime: 0
+                        
+                        property int _activeIndex: LyricsService.activeIndex
+                        
+                        on_ActiveIndexChanged: {
+                            elapsedTime = 0
+                            if (LyricsService.activeLineDuration > 0) {
+                                elapsedAnim.to = LyricsService.activeLineDuration
+                                elapsedAnim.duration = LyricsService.activeLineDuration
+                                elapsedAnim.restart()
+                            }
+                        }
+                        
+                        NumberAnimation {
+                            id: elapsedAnim
+                            target: defaultLyricContainer
+                            property: "elapsedTime"
+                            from: 0
+                            easing.type: Easing.Linear
+                        }
+                        
+                        Row {
+                            id: defaultActiveLyricRow
+                            anchors.fill: parent
+                            spacing: 0
+                            transform: Translate { id: defaultLyricTrans; y: 0 }
+                            
+                            Repeater {
+                                model: defaultLyricContainer.currentWords.length
+                                delegate: Item {
+                                    required property int index
+                                    property var wordData: defaultLyricContainer.currentWords[index]
+                                    property bool isMusicNote: wordData && wordData.text === "♪"
+                                    
+                                    width: isMusicNote ? (tinyVisualizerLoader.item ? tinyVisualizerLoader.item.implicitWidth : 20) : wordBg.implicitWidth
+                                    height: wordBg.implicitHeight
+                                    
+                                    Loader {
+                                        id: tinyVisualizerLoader
+                                        active: parent.isMusicNote
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        sourceComponent: Visualizer {
+                                            barCount: 4
+                                            dotSize: 3
+                                            dotSpacing: 2
+                                            maxBarHeight: 12
+                                            maxVisualizerValue: 300
+                                            vertical: false
+                                            implicitHeight: 12
+                                            implicitWidth: (4 * (3 + 2))
+                                            opacity: wordBg.opacity
+                                        }
+                                    }
+                                    
+                                    Text {
+                                        id: wordBg
+                                        visible: !parent.isMusicNote
+                                        text: wordData && wordData.text !== undefined ? wordData.text : " "
+                                        color: Appearance.colors.colPrimary
+                                        opacity: {
+                                            if (!wordData) return 0.3;
+                                            const sTime = wordData.startTime !== undefined ? wordData.startTime : 0;
+                                            return defaultLyricContainer.elapsedTime >= sTime ? 1.0 : 0.3;
+                                        }
+                                        font.family: Appearance.font.family.main
+                                        font.pixelSize: Appearance.font.pixelSize.small ?? 15
+                                        
+                                        Behavior on opacity {
+                                            NumberAnimation { duration: 100; easing.type: Easing.InOutQuad }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -314,6 +419,13 @@ Item {
                             sourceSize.width: artRect.width
                             sourceSize.height: artRect.height
                             visible: root.displayedArtFilePath !== ""
+                            
+                            RotationAnimator on rotation {
+                                loops: Animation.Infinite
+                                from: 0; to: 360
+                                duration: 8000
+                                running: root.isPlaying
+                            }
                         }
 
                         MaterialSymbol {
@@ -326,41 +438,151 @@ Item {
                         }
                     }
 
-                    // Title + Artist
-                    ColumnLayout {
-                        spacing: -4
+                    // Title + Artist + Lyrics
+                    Item {
                         Layout.alignment: Qt.AlignVCenter
-                        Layout.topMargin: 2
+                        implicitWidth: LyricsService.status === "ok" ? activeLyricRow.implicitWidth + 12 : 250
+                        implicitHeight: 32
+                        clip: true
+                        
+                        ColumnLayout {
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 6
+                            anchors.rightMargin: 6
+                            visible: LyricsService.status !== "ok"
+                            spacing: -4
 
-                        StyledText {
-                            id: artistText
-                            text: root.trackArtist
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.colors.colOnSecondaryContainer
-                            elide: Text.ElideRight
-                            Layout.maximumWidth: 120
-                            Behavior on text {
-                                SequentialAnimation {
-                                    NumberAnimation { target: artistText; property: "x"; to: -artistText.width; duration: 150; easing.type: Easing.InQuad }
-                                    PropertyAction { target: artistText; property: "text" }
-                                    NumberAnimation { target: artistText; property: "x"; from: artistText.width; to: 0; duration: 150; easing.type: Easing.OutQuad }
+                            StyledText {
+                                id: artistText
+                                text: root.trackArtist
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colOnSecondaryContainer
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                                Behavior on text {
+                                    SequentialAnimation {
+                                        NumberAnimation { target: artistText; property: "x"; to: -artistText.width; duration: 150; easing.type: Easing.InQuad }
+                                        PropertyAction { target: artistText; property: "text" }
+                                        NumberAnimation { target: artistText; property: "x"; from: artistText.width; to: 0; duration: 150; easing.type: Easing.OutQuad }
+                                    }
+                                }
+                            }
+                            StyledText {
+                                id: titleText
+                                Layout.topMargin: (!root.activePlayer || root.trackArtist.length === 0) ? -13 : 0
+                                text: StringUtils.cleanMusicTitle(root.trackTitle) || Translation.tr("No media")
+                                font.pixelSize: Appearance.font.pixelSize.smallie
+                                color: Appearance.colors.colOnSecondaryContainer
+                                elide: Text.ElideRight
+                                opacity: 0.7
+                                Layout.fillWidth: true
+                                Behavior on text {
+                                    SequentialAnimation {
+                                        NumberAnimation { target: titleText; property: "x"; to: -titleText.width; duration: 150; easing.type: Easing.InQuad }
+                                        PropertyAction { target: titleText; property: "text" }
+                                        NumberAnimation { target: titleText; property: "x"; from: titleText.width; to: 0; duration: 150; easing.type: Easing.OutQuad }
+                                    }
                                 }
                             }
                         }
-                        StyledText {
-                            id: titleText
-                            Layout.topMargin: (!root.activePlayer || root.trackArtist.length === 0) ? -13 : 0
-                            text: StringUtils.cleanMusicTitle(root.trackTitle) || Translation.tr("No media")
-                            font.pixelSize: Appearance.font.pixelSize.smallie
-                            color: Appearance.colors.colOnSecondaryContainer
-                            elide: Text.ElideRight
-                            opacity: 0.7
-                            Layout.maximumWidth: 120
-                            Behavior on text {
-                                SequentialAnimation {
-                                    NumberAnimation { target: titleText; property: "x"; to: -artistText.width; duration: 150; easing.type: Easing.InQuad }
-                                    PropertyAction { target: titleText; property: "text" }
-                                    NumberAnimation { target: titleText; property: "x"; from: artistText.width; to: 0; duration: 150; easing.type: Easing.OutQuad }
+
+                        Item {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.leftMargin: 6
+                            anchors.rightMargin: 6
+                            visible: LyricsService.status === "ok"
+                            height: lyricHeightRef.implicitHeight
+                            
+                            StyledText {
+                                id: lyricHeightRef
+                                text: "T"
+                                font.pixelSize: Appearance.font.pixelSize.smallie
+                                opacity: 0
+                            }
+                            
+                            Item {
+                                id: lyricContainer
+                                anchors.fill: parent
+                                
+                                property string text: LyricsService.slots[3] || "♪"
+                                property var currentWords: LyricsService.activeIndex >= 0 && LyricsService.lyricsLines[LyricsService.activeIndex]?.words?.length > 0 ? LyricsService.lyricsLines[LyricsService.activeIndex].words : [{text: lyricContainer.text, startTime: 0, duration: 0}]
+                                property real elapsedTime: 0
+                                
+                                property int _activeIndex: LyricsService.activeIndex
+                                
+                                on_ActiveIndexChanged: {
+                                    elapsedTime = 0
+                                    if (LyricsService.activeLineDuration > 0) {
+                                        hoverElapsedAnim.to = LyricsService.activeLineDuration
+                                        hoverElapsedAnim.duration = LyricsService.activeLineDuration
+                                        hoverElapsedAnim.restart()
+                                    }
+                                }
+                                
+                                NumberAnimation {
+                                    id: hoverElapsedAnim
+                                    target: lyricContainer
+                                    property: "elapsedTime"
+                                    from: 0
+                                    easing.type: Easing.Linear
+                                }
+                                
+                                Row {
+                                    id: activeLyricRow
+                                    anchors.fill: parent
+                                    spacing: 0
+                                    transform: Translate { id: lyricTrans; y: 0 }
+                                    
+                                    Repeater {
+                                        model: lyricContainer.currentWords.length
+                                        delegate: Item {
+                                            required property int index
+                                            property var wordData: lyricContainer.currentWords[index]
+                                            property bool isMusicNote: wordData && wordData.text === "♪"
+                                            
+                                            width: isMusicNote ? (tinyVisualizerLoader.item ? tinyVisualizerLoader.item.implicitWidth : 20) : wordBg.implicitWidth
+                                            height: wordBg.implicitHeight
+                                            
+                                            Loader {
+                                                id: tinyVisualizerLoader
+                                                active: parent.isMusicNote
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                sourceComponent: Visualizer {
+                                                    barCount: 4
+                                                    dotSize: 3
+                                                    dotSpacing: 2
+                                                    maxBarHeight: 12
+                                                    maxVisualizerValue: 300
+                                                    vertical: false
+                                                    implicitHeight: 12
+                                                    implicitWidth: (4 * (3 + 2))
+                                                    opacity: wordBg.opacity
+                                                }
+                                            }
+                                            
+                                            Text {
+                                                id: wordBg
+                                                visible: !parent.isMusicNote
+                                                text: wordData && wordData.text !== undefined ? wordData.text : " "
+                                                color: Appearance.colors.colPrimary
+                                                opacity: {
+                                                    if (!wordData) return 0.3;
+                                                    const sTime = wordData.startTime !== undefined ? wordData.startTime : 0;
+                                                    return lyricContainer.elapsedTime >= sTime ? 1.0 : 0.3;
+                                                }
+                                                font.family: Appearance.font.family.main
+                                                font.pixelSize: Appearance.font.pixelSize.smallie
+                                                
+                                                Behavior on opacity {
+                                                    NumberAnimation { duration: 100; easing.type: Easing.InOutQuad }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

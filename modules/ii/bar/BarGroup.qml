@@ -11,6 +11,7 @@ Item {
     property bool paintMaterialPill: false
     property real padding: (root.isMaterial && !root.paintMaterialPill) ? 0 : 5
     property color bgColor: Appearance.colors.colPrimaryContainer
+    property string widgetName: ""
 
     readonly property real fullRadius: height / 2
     readonly property real midRadius: Config.options.bar.cornerStyle === 2 ? Appearance.rounding.unsharpenmore + 2 : Appearance.rounding.unsharpenmore
@@ -42,8 +43,8 @@ Item {
         color: (root.isMaterial && !root.paintMaterialPill)
             ? "transparent"
             : (root.isMaterial && root.paintMaterialPill)
-                ? root.bgColor
-                : (Config.options?.bar.borderless === "transparent"
+                ? (root.widgetName === "media" ? "transparent" : root.bgColor)
+                : ((Config.options?.bar.borderless === "transparent" || root.widgetName === "media")
                     ? "transparent"
                     : Config.options.bar.cornerStyle === 2
                         ? Appearance.colors.colLayer0

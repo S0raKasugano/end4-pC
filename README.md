@@ -6,8 +6,12 @@
 
 # 💠 end4-pC
 
-**A personal fork of [illogical-impulse](https://github.com/end-4/dots-hyprland) by [@end-4](https://github.com/end-4)**  
-Customized and maintained by **pctrade**
+**A personal fork of [end4-pC](https://github.com/pctrade/end4-pC) by [@pctrade](https://github.com/pctrade)**  
+*(Originally based on [illogical-impulse](https://github.com/end-4/dots-hyprland) by [@end-4](https://github.com/end-4))*
+### 🌟 Custom Features in this Fork:
+- 🎤 **Dynamic Karaoke Lyrics:** Fully custom, word-by-word synced lyrics right in the media widget using `lrclib`.
+
+> **THIS FORK IS VIBE CODED AND NOT 100% CHECKED FOR BUGS, USE AT YOUR OWN RISK**
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md)
 
@@ -49,7 +53,7 @@ Customized and maintained by **pctrade**
 
 ```bash
 cd ~/.config/quickshell/
-git clone https://github.com/pctrade/end4-pC.git
+git clone https://github.com/S0raKasugano/end4-pC.git
 killall qs 2>/dev/null; qs -c end4-pC > /dev/null 2>&1 & disown
 ```
 
@@ -105,7 +109,7 @@ Huge thanks to the people who made this possible:
 - **[@end-4](https://github.com/end-4)** — for creating the original [dots-hyprland](https://github.com/end-4/dots-hyprland) / illogical-impulse shell. An absolute masterpiece of a dotfiles project 🫡
 - **[@gh0stzk](https://github.com/gh0stzk)** — for providing the weather API integration that made the weather widget possible 🙌
 - **[@StarS2112](https://github.com/StarS2112)** — for showcasing this fork 🙌
-
+- **[@pctrade]([https://github.com/pctrade)** - for making this fork
 ---
 
 <div align="center">
