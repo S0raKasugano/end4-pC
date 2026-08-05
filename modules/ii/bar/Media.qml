@@ -180,7 +180,7 @@ Item {
             }
             Item {
                 Layout.alignment: Qt.AlignVCenter
-                implicitWidth: LyricsService.status === "ok" ? defaultActiveLyricRow.implicitWidth + 16 : 250
+                implicitWidth: Config.options.bar.media.showLyrics && LyricsService.status === "ok" ? defaultActiveLyricRow.implicitWidth + 16 : 250
                 Layout.fillHeight: true
                 clip: true
 
@@ -189,7 +189,7 @@ Item {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.leftMargin: 8
-                    visible: Config.options.bar.verbose && LyricsService.status !== "ok"
+                    visible: Config.options.bar.verbose && (!Config.options.bar.media.showLyrics || LyricsService.status !== "ok")
                     horizontalAlignment: Text.AlignLeft
                     elide: Text.ElideRight
                     color: Appearance.colors.colOnLayer1
@@ -201,7 +201,7 @@ Item {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.leftMargin: 8
-                    visible: Config.options.bar.verbose && LyricsService.status === "ok"
+                    visible: Config.options.bar.verbose && Config.options.bar.media.showLyrics && LyricsService.status === "ok"
                     height: defaultLyricHeightRef.implicitHeight
                     
                     StyledText {
@@ -219,13 +219,29 @@ Item {
                         property real elapsedTime: 0
                         
                         property int _activeIndex: LyricsService.activeIndex
+                        property int animatedActiveIndex: -1
                         
                         on_ActiveIndexChanged: {
                             elapsedTime = 0
+                            animatedActiveIndex = _activeIndex
                             if (LyricsService.activeLineDuration > 0) {
-                                elapsedAnim.to = LyricsService.activeLineDuration
-                                elapsedAnim.duration = LyricsService.activeLineDuration
+                                elapsedAnim.to = 9999999
+                                elapsedAnim.duration = 9999999
                                 elapsedAnim.restart()
+                                if (root.activePlayer?.playbackState !== MprisPlaybackState.Playing) {
+                                    elapsedAnim.pause()
+                                }
+                            }
+                        }
+                        
+                        Connections {
+                            target: root.activePlayer
+                            function onPlaybackStateChanged() {
+                                if (root.activePlayer.playbackState === MprisPlaybackState.Playing) {
+                                    elapsedAnim.resume()
+                                } else {
+                                    elapsedAnim.pause()
+                                }
                             }
                         }
                         
@@ -255,14 +271,14 @@ Item {
                                     
                                     Loader {
                                         id: tinyVisualizerLoader
-                                        active: parent.isMusicNote
+                                        active: parent.isMusicNote && index === defaultLyricContainer.currentWords.findIndex(w => w && w.text === "♪")
                                         anchors.verticalCenter: parent.verticalCenter
                                         sourceComponent: Visualizer {
                                             barCount: 4
                                             dotSize: 3
                                             dotSpacing: 2
                                             maxBarHeight: 12
-                                            maxVisualizerValue: 300
+                                            maxVisualizerValue: 1000 / (Config.options.bar.media.visualizerSensitivity || 2.6)
                                             vertical: false
                                             implicitHeight: 12
                                             implicitWidth: (4 * (3 + 2))
@@ -276,6 +292,8 @@ Item {
                                         text: wordData && wordData.text !== undefined ? wordData.text : " "
                                         color: Appearance.colors.colPrimary
                                         opacity: {
+                                            if (Config.options.bar.media.characterFlow) return 0.3;
+                                            if (defaultLyricContainer.animatedActiveIndex !== LyricsService.activeIndex) return 0.3;
                                             if (!wordData) return 0.3;
                                             const sTime = wordData.startTime !== undefined ? wordData.startTime : 0;
                                             return defaultLyricContainer.elapsedTime >= sTime ? 1.0 : 0.3;
@@ -284,7 +302,35 @@ Item {
                                         font.pixelSize: Appearance.font.pixelSize.small ?? 15
                                         
                                         Behavior on opacity {
+                                            enabled: !Config.options.bar.media.characterFlow
                                             NumberAnimation { duration: 100; easing.type: Easing.InOutQuad }
+                                        }
+                                    }
+                                    
+                                    Item {
+                                        visible: !parent.isMusicNote && Config.options.bar.media.characterFlow
+                                        anchors.left: wordBg.left
+                                        anchors.top: wordBg.top
+                                        height: wordBg.height
+                                        clip: true
+                                        width: {
+                                            if (defaultLyricContainer.animatedActiveIndex !== LyricsService.activeIndex) return 0;
+                                            if (!wordData) return 0;
+                                            const sTime = wordData.startTime !== undefined ? wordData.startTime : 0;
+                                            const dTime = wordData.duration !== undefined ? wordData.duration : 1;
+                                            if (defaultLyricContainer.elapsedTime < sTime) return 0;
+                                            if (defaultLyricContainer.elapsedTime >= sTime + dTime) return wordBg.implicitWidth;
+                                            
+                                            const progress = (defaultLyricContainer.elapsedTime - sTime) / dTime;
+                                            return progress * wordBg.implicitWidth;
+                                        }
+                                        
+                                        Text {
+                                            text: wordBg.text
+                                            color: Appearance.colors.colPrimary
+                                            opacity: 1.0
+                                            font.family: Appearance.font.family.main
+                                            font.pixelSize: Appearance.font.pixelSize.small ?? 15
                                         }
                                     }
                                 }
@@ -441,7 +487,7 @@ Item {
                     // Title + Artist + Lyrics
                     Item {
                         Layout.alignment: Qt.AlignVCenter
-                        implicitWidth: LyricsService.status === "ok" ? activeLyricRow.implicitWidth + 12 : 250
+                        implicitWidth: Config.options.bar.media.showLyrics && LyricsService.status === "ok" ? activeLyricRow.implicitWidth + 12 : 250
                         implicitHeight: 32
                         clip: true
                         
@@ -451,7 +497,7 @@ Item {
                             anchors.right: parent.right
                             anchors.leftMargin: 6
                             anchors.rightMargin: 6
-                            visible: LyricsService.status !== "ok"
+                            visible: !Config.options.bar.media.showLyrics || LyricsService.status !== "ok"
                             spacing: -4
 
                             StyledText {
@@ -494,7 +540,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.leftMargin: 6
                             anchors.rightMargin: 6
-                            visible: LyricsService.status === "ok"
+                            visible: Config.options.bar.media.showLyrics && LyricsService.status === "ok"
                             height: lyricHeightRef.implicitHeight
                             
                             StyledText {
@@ -513,18 +559,34 @@ Item {
                                 property real elapsedTime: 0
                                 
                                 property int _activeIndex: LyricsService.activeIndex
+                                property int animatedActiveIndex: -1
                                 
                                 on_ActiveIndexChanged: {
                                     elapsedTime = 0
+                                    animatedActiveIndex = _activeIndex
                                     if (LyricsService.activeLineDuration > 0) {
-                                        hoverElapsedAnim.to = LyricsService.activeLineDuration
-                                        hoverElapsedAnim.duration = LyricsService.activeLineDuration
-                                        hoverElapsedAnim.restart()
+                                        elapsedAnim.to = 9999999
+                                        elapsedAnim.duration = 9999999
+                                        elapsedAnim.restart()
+                                    }
+                                    if (root.activePlayer?.playbackState !== MprisPlaybackState.Playing) {
+                                        elapsedAnim.pause()
+                                    }
+                                }
+                                
+                                Connections {
+                                    target: root.activePlayer
+                                    function onPlaybackStateChanged() {
+                                        if (root.activePlayer.playbackState === MprisPlaybackState.Playing) {
+                                            elapsedAnim.resume()
+                                        } else {
+                                            elapsedAnim.pause()
+                                        }
                                     }
                                 }
                                 
                                 NumberAnimation {
-                                    id: hoverElapsedAnim
+                                    id: elapsedAnim
                                     target: lyricContainer
                                     property: "elapsedTime"
                                     from: 0
@@ -549,14 +611,14 @@ Item {
                                             
                                             Loader {
                                                 id: tinyVisualizerLoader
-                                                active: parent.isMusicNote
+                                                active: parent.isMusicNote && index === lyricContainer.currentWords.findIndex(w => w && w.text === "♪")
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 sourceComponent: Visualizer {
                                                     barCount: 4
                                                     dotSize: 3
                                                     dotSpacing: 2
                                                     maxBarHeight: 12
-                                                    maxVisualizerValue: 300
+                                                    maxVisualizerValue: 1000 / (Config.options.bar.media.visualizerSensitivity || 2.6)
                                                     vertical: false
                                                     implicitHeight: 12
                                                     implicitWidth: (4 * (3 + 2))
@@ -570,6 +632,8 @@ Item {
                                                 text: wordData && wordData.text !== undefined ? wordData.text : " "
                                                 color: Appearance.colors.colPrimary
                                                 opacity: {
+                                                    if (Config.options.bar.media.characterFlow) return 0.3;
+                                                    if (lyricContainer.animatedActiveIndex !== LyricsService.activeIndex) return 0.3;
                                                     if (!wordData) return 0.3;
                                                     const sTime = wordData.startTime !== undefined ? wordData.startTime : 0;
                                                     return lyricContainer.elapsedTime >= sTime ? 1.0 : 0.3;
@@ -578,7 +642,35 @@ Item {
                                                 font.pixelSize: Appearance.font.pixelSize.smallie
                                                 
                                                 Behavior on opacity {
+                                                    enabled: !Config.options.bar.media.characterFlow
                                                     NumberAnimation { duration: 100; easing.type: Easing.InOutQuad }
+                                                }
+                                            }
+                                            
+                                            Item {
+                                                visible: !parent.isMusicNote && Config.options.bar.media.characterFlow
+                                                anchors.left: wordBg.left
+                                                anchors.top: wordBg.top
+                                                height: wordBg.height
+                                                clip: true
+                                                width: {
+                                                    if (lyricContainer.animatedActiveIndex !== LyricsService.activeIndex) return 0;
+                                                    if (!wordData) return 0;
+                                                    const sTime = wordData.startTime !== undefined ? wordData.startTime : 0;
+                                                    const dTime = wordData.duration !== undefined ? wordData.duration : 1;
+                                                    if (lyricContainer.elapsedTime < sTime) return 0;
+                                                    if (lyricContainer.elapsedTime >= sTime + dTime) return wordBg.implicitWidth;
+                                                    
+                                                    const progress = (lyricContainer.elapsedTime - sTime) / dTime;
+                                                    return progress * wordBg.implicitWidth;
+                                                }
+                                                
+                                                Text {
+                                                    text: wordBg.text
+                                                    color: Appearance.colors.colPrimary
+                                                    opacity: 1.0
+                                                    font.family: Appearance.font.family.main
+                                                    font.pixelSize: Appearance.font.pixelSize.smallie
                                                 }
                                             }
                                         }

@@ -17,6 +17,7 @@ RowLayout {
     property bool usePercentTooltip: true
     property real from: slider.from
     property real to: slider.to
+    property alias stepSize: slider.stepSize
     property real textWidth: 120
     property bool showLabel: true
 

@@ -6,7 +6,7 @@ import json
 
 import re
 
-def parse_line_to_words(line_text, line_duration):
+def parse_line_to_words(line_text, line_duration, line_start_time):
     elrc_pattern = r'<(\d{2}):(\d{2}\.\d{2,3})>'
     matches = list(re.finditer(elrc_pattern, line_text))
     
@@ -28,8 +28,14 @@ def parse_line_to_words(line_text, line_duration):
             else:
                 duration = 0.5
                 
+            # Cap duration for character flow so it doesn't crawl during long gaps
+            max_duration = len(text.strip()) * 0.1 # 100ms per character
+            if duration > max_duration + 0.2:
+                duration = max_duration
+                
             words.append({
                 "text": text,
+                "startTime": (time_sec - line_start_time) * 1000,
                 "duration": duration * 1000
             })
     else:
@@ -50,6 +56,10 @@ def parse_line_to_words(line_text, line_duration):
         if total_chars == 0:
             return words
             
+        # Realistic singing speed: ~100ms per character (approx 10 chars per second). 
+        # We don't want to stretch a 3-second phrase over a 15-second gap.
+        actual_sing_time = min(line_duration * 1000, total_chars * 100.0)
+            
         for w in words_raw:
             char_count = len(w.strip())
             if char_count == 0:
@@ -57,7 +67,7 @@ def parse_line_to_words(line_text, line_duration):
             ratio = char_count / total_chars
             words.append({
                 "text": w,
-                "duration": (line_duration * ratio) * 1000
+                "duration": actual_sing_time * ratio
             })
             
     start_time = 0
@@ -93,7 +103,7 @@ def _parse_lrc(lrc_text: str) -> list:
             
         lines[i]["duration"] = line_duration * 1000
         clean_text = re.sub(r'<[^>]+>', '', lines[i]["text"])
-        lines[i]["words"] = parse_line_to_words(lines[i]["text"], line_duration)
+        lines[i]["words"] = parse_line_to_words(lines[i]["text"], line_duration, lines[i]["time"])
         if lines[i]["words"]:
             last_word = lines[i]["words"][-1]
             total_word_time = last_word["startTime"] + last_word["duration"]

@@ -452,6 +452,9 @@ Singleton {
                     property int maxWidth: 280
                     property int minWidth: 100
                     property string lyricsProviders: "lrclib, lyricsplus, unison"
+                    property bool showLyrics: true
+                    property bool characterFlow: false
+                    property real visualizerSensitivity: 2.6
                 }
             }
 

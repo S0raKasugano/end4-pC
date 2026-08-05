@@ -613,6 +613,28 @@ ContentPage {
                     }
                 }
                 ConfigSwitch {
+                    buttonIcon: "lyrics"
+                    text: Translation.tr("Show karaoke lyrics")
+                    checked: Config.options.bar.media.showLyrics
+                    onCheckedChanged: { Config.options.bar.media.showLyrics = checked; }
+                }
+                ConfigSwitch {
+                    buttonIcon: "animation"
+                    text: Translation.tr("Character-by-character flow")
+                    checked: Config.options.bar.media.characterFlow
+                    onCheckedChanged: { Config.options.bar.media.characterFlow = checked; }
+                }
+                ConfigSlider {
+                    buttonIcon: "equalizer"
+                    text: Translation.tr("Visualizer Sensitivity")
+                    usePercentTooltip: false
+                    value: Config.options.bar.media.visualizerSensitivity
+                    from: 1.0
+                    to: 5.0
+                    stepSize: 0.1
+                    onValueChanged: { Config.options.bar.media.visualizerSensitivity = value; }
+                }
+                ConfigSwitch {
                     buttonIcon: "keep"; text: Translation.tr("Pin media controls")
                     checked: Config.options.bar.media.alwaysVisible
                     onCheckedChanged: { Config.options.bar.media.alwaysVisible = checked; }
